@@ -15,6 +15,7 @@ import com.dtz.netservice.utils.ConstFun.setImageId
 import com.dtz.netservice.utils.Consts.TYPE_INSTAGRAM
 import com.dtz.netservice.utils.Consts.TYPE_MESSENGER
 import com.dtz.netservice.utils.Consts.TYPE_WHATSAPP
+import com.dtz.netservice.utils.Consts.TYPE_TIKTOOK
 import de.hdodenhof.circleimageview.CircleImageView
 import kotterknife.bindView
 
@@ -59,6 +60,11 @@ class NotifyMessageViewHolder(view: View) : RecyclerView.ViewHolder(view){
             TYPE_INSTAGRAM -> {
                 iconType.setImageResource(R.drawable.ic_instagram)
                 textType.text = itemView.context.getString(R.string.instagram)
+                textType.setTextColor(ContextCompat.getColor(itemView.context,R.color.colorRed_01))
+            }
+            TYPE_TIKTOOK -> {
+                iconType.setImageResource(R.drawable.ic_red_social)
+                textType.text = itemView.context.getString(R.string.tiktok)
                 textType.setTextColor(ContextCompat.getColor(itemView.context,R.color.colorRed_01))
             }
         }

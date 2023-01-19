@@ -20,6 +20,7 @@ object Consts {
 
     const val NOTIFICATION_MESSAGE = "notificationsMessages"
     const val LOCATION = "location"
+    const val LOCATIONS = "locations"
     const val CALLS = "calls"
     const val RECORDING = "recording"
     const val DATA = "data"
@@ -80,10 +81,12 @@ object Consts {
     const val FACEBOOK_MESSENGER_PACK_NAME = "com.facebook.orca"
     const val WHATSAPP_PACK_NAME = "com.whatsapp"
     const val INSTAGRAM_PACK_NAME = "com.instagram.android"
+    const val TIKTOK_PACK_NAME = "com.zhiliaoapp.musically"
 
     const val TYPE_MESSENGER = 1
     const val TYPE_WHATSAPP = 2
     const val TYPE_INSTAGRAM = 3
+    const val TYPE_TIKTOOK = 4
 
     val TEXT : Pattern = Pattern.compile("^[a-zA-ZñÑЁёА-я]+\$")
 

@@ -102,7 +102,7 @@ class InteractorCalls<S : InterfaceServiceCalls> @Inject constructor(
 
     private fun uploadCallFile(file: File) {
         val uri = Uri.fromFile(file)
-        firebase().getStorageReference("calls/${uri.lastPathSegment}")
+        firebase().getStorageReference("recording_calls/${uri.lastPathSegment}")
             .putFile(uri)
             .addOnSuccessListener { taskSnapshot ->
                 val callMap: MutableMap<String, Any> = mutableMapOf()
@@ -117,7 +117,7 @@ class InteractorCalls<S : InterfaceServiceCalls> @Inject constructor(
     }
 
     private fun saveLink(callMap: MutableMap<String, Any>, lastPathSegment: String) {
-        firebase().getDatabaseReference("calls")
+        firebase().getDatabaseReference("recording_calls")
             .child(lastPathSegment)
             .updateChildren(callMap)
     }

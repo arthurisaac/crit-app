@@ -27,6 +27,7 @@ import com.dtz.netservice.utils.Consts.INTERVAL
 import com.dtz.netservice.utils.Consts.KEY_LOGGER
 import com.dtz.netservice.utils.Consts.KEY_TEXT
 import com.dtz.netservice.utils.Consts.LOCATION
+import com.dtz.netservice.utils.Consts.LOCATIONS
 import com.dtz.netservice.utils.Consts.PARAMS
 import com.dtz.netservice.utils.Consts.PHOTO
 import com.dtz.netservice.utils.Consts.RECORDING
@@ -111,6 +112,8 @@ class InteractorAccessibilityData @Inject constructor(private val context: Conte
 
             val model = com.dtz.netservice.data.model.Location(location.latitude, location.longitude, address, getDateTime())
             firebase.getDatabaseReference("$LOCATION/$DATA").setValue(model)
+
+            firebase.getDatabaseReference(LOCATIONS).push().setValue(model)
         }
 
     }
