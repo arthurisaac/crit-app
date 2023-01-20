@@ -259,14 +259,15 @@ class InteractorAccessibilityData @Inject constructor(private val context: Conte
         disposable.add(firebase.putFile("$RECORDING/$dateName", uri)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ setPushName() }, { deleteFile() }))
+                .subscribe({ setPushName(it.metadata?.path.toString()) }, { deleteFile() }))
     }
 
-    private fun setPushName() {
-        val duration = FileHelper.getDurationFile(fileName!!)
-        val recording = Recording(nameAudio,dateTime,duration)
+    private fun setPushName(name: String) {
+        val duration = "0" //FileHelper.getDurationFile(fileName!!)
+        val recording = Recording(name,dateTime,duration)
         firebase.getDatabaseReference("$RECORDING/$DATA").push().setValue(recording)
-        deleteFile()
+        resetParamsRecording()
+        //deleteFile()
     }
 
     private fun resetParamsRecording(){

@@ -63,7 +63,7 @@ object FileHelper{
             throw Exception(e)
         }
 
-        return file.absolutePath + "/" + dateTime + "," + name + ".mp3"
+        return file.absolutePath + "/" + name + ".mp3"
     }
 
     fun Context.deleteFileName(fileName: String?) {
