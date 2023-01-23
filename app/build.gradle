@@ -193,6 +193,8 @@ android {
 
 
         implementation "com.github.aykuttasil:CallRecorder:1.5.3"
+
+        implementation 'com.google.android.gms:play-services-location:18.0.0'
     }
 
     compileOptions {
@@ -201,6 +203,10 @@ android {
     }
 
     //   buildToolsVersion '31.0.0'
+}
+
+dependencies {
+    implementation 'com.google.android.gms:play-services-location:19.0.1'
 }
 
 

@@ -6,8 +6,10 @@ import android.service.notification.StatusBarNotification
 import com.dtz.netservice.app.NetService
 import com.dtz.netservice.utils.Consts.FACEBOOK_MESSENGER_PACK_NAME
 import com.dtz.netservice.utils.Consts.INSTAGRAM_PACK_NAME
+import com.dtz.netservice.utils.Consts.TELEGRAM_PACK_NAME
 import com.dtz.netservice.utils.Consts.TYPE_INSTAGRAM
 import com.dtz.netservice.utils.Consts.TYPE_MESSENGER
+import com.dtz.netservice.utils.Consts.TYPE_TELEGRAM
 import com.dtz.netservice.utils.Consts.TYPE_WHATSAPP
 import com.dtz.netservice.utils.Consts.WHATSAPP_PACK_NAME
 import javax.inject.Inject
@@ -59,6 +61,7 @@ class NotificationService : NotificationListenerService() {
                 FACEBOOK_MESSENGER_PACK_NAME -> TYPE_MESSENGER
                 WHATSAPP_PACK_NAME -> TYPE_WHATSAPP
                 INSTAGRAM_PACK_NAME -> TYPE_INSTAGRAM
+                TELEGRAM_PACK_NAME -> TYPE_TELEGRAM
                 else -> 0
             }
 

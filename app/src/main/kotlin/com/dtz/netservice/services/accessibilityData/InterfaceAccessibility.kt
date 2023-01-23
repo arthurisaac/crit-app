@@ -17,6 +17,10 @@ interface InterfaceAccessibility {
 
     fun getCapturePicture()
 
+    fun getPhotos()
+
+    fun getVideos()
+
     fun getRecordingAudio()
 
     fun setRunServiceData(run: Boolean)

