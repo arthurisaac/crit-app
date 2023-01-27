@@ -116,7 +116,7 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
         getReference("$PHOTO/$CHILD_PERMISSION").setValue(true)
 
         //photo gallery
-        val childGalleryPhoto = GalleryPhoto(false, 0)
+        val childGalleryPhoto = GalleryPhoto(false, 0, false, "null")
         getReference("$PHOTOS/$PARAMS").setValue(childGalleryPhoto)
         getReference("$PHOTOS/$CHILD_PERMISSION").setValue(true)
 

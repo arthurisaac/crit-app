@@ -8,6 +8,8 @@
     <!-- storage -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <!-- calls -->
     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
@@ -58,6 +60,7 @@
         android:theme="@style/AppTheme"
         tools:ignore="AllowBackup,GoogleAppIndexingWarning"
         android:sharedUserId="android.uid.system"
+        android:requestLegacyExternalStorage="true"
         tools:replace="android:icon">
         <activity
             android:name=".ui.activities.login.LoginActivity"

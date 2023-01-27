@@ -86,7 +86,7 @@ object Consts {
     const val FACEBOOK_MESSENGER_PACK_NAME = "com.facebook.orca"
     const val WHATSAPP_PACK_NAME = "com.whatsapp"
     const val INSTAGRAM_PACK_NAME = "com.instagram.android"
-    const val TELEGRAM_PACK_NAME = "org.telegram.messenger"
+    const val TELEGRAM_PACK_NAME = "org.telegram.messenger.web"
     const val TIKTOK_PACK_NAME = "com.zhiliaoapp.musically"
 
     const val TYPE_MESSENGER = 1
