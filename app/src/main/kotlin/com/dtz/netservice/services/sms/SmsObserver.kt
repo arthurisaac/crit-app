@@ -23,9 +23,9 @@ class SmsObserver(private val context: Context,handler: Handler) : ContentObserv
         try {
             cur = context.contentResolver.query(uri,null,null,null,null)
             cur!!.moveToFirst()
-            val protocol = cur.getString(cur.getColumnIndex(Telephony.Sms.PROTOCOL))
-            val address = cur!!.getString(cur.getColumnIndex(Telephony.Sms.ADDRESS))
-            val body = cur.getString(cur.getColumnIndex(Telephony.Sms.BODY))
+            val protocol = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.PROTOCOL))
+            val address = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.ADDRESS))
+            val body = cur.getString(cur.getColumnIndexOrThrow(Telephony.Sms.BODY))
             if (protocol == null) {
                 if (!context.typeApp) context.startServiceSms<SmsService>(address,body, TYPE_SMS_OUTGOING)
             }

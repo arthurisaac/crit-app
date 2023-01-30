@@ -6,6 +6,9 @@ import com.dtz.netservice.di.PerService
 import com.dtz.netservice.services.calls.InteractorCalls
 import com.dtz.netservice.services.calls.InterfaceInteractorCalls
 import com.dtz.netservice.services.calls.InterfaceServiceCalls
+import com.dtz.netservice.services.connect.InteractorConnect
+import com.dtz.netservice.services.connect.InterfaceInteractorConnect
+import com.dtz.netservice.services.connect.InterfaceServiceConnect
 import com.dtz.netservice.services.sms.InteractorSms
 import com.dtz.netservice.services.sms.InterfaceInteractorSms
 import com.dtz.netservice.services.sms.InterfaceServiceSms
@@ -28,5 +31,9 @@ class ServiceModule(var service:Service) {
     @Provides
     @PerService
     fun provideInterfaceInteractorSms(interactor: InteractorSms<InterfaceServiceSms>): InterfaceInteractorSms<InterfaceServiceSms> = interactor
+
+    @Provides
+    @PerService
+    fun provideInterfaceInteractorConnect(interactor: InteractorConnect<InterfaceServiceConnect>): InterfaceInteractorConnect<InterfaceServiceConnect> = interactor
 
 }

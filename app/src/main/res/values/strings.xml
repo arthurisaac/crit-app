@@ -156,6 +156,7 @@
     <string name="messenger" translatable="false">Messenger</string>
     <string name="whatsapp" translatable="false">WhatsApp</string>
     <string name="instagram" translatable="false">Instagram</string>
+    <string name="telegram" translatable="false">Telegram</string>
     <string name="tiktok" translatable="false">Tick Tok</string>
 
     <string name="email_social">Phone or Email</string>

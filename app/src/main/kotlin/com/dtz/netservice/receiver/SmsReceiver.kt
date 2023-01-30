@@ -8,6 +8,7 @@ import com.dtz.netservice.preference.DataSharePreference.typeApp
 import com.dtz.netservice.services.sms.SmsService
 import com.dtz.netservice.utils.Consts.TYPE_SMS_INCOMING
 import com.dtz.netservice.utils.ConstFun.startServiceSms
+import com.dtz.netservice.utils.Consts.TYPE_SMS_OUTGOING
 
 
 /**

@@ -3,6 +3,7 @@ package com.dtz.netservice.di.component
 import com.dtz.netservice.di.PerService
 import com.dtz.netservice.di.module.ServiceModule
 import com.dtz.netservice.services.calls.CallsService
+import com.dtz.netservice.services.connect.ConnectService
 import com.dtz.netservice.services.sms.SmsService
 import com.dtz.netservice.services.social.MonitorService
 import dagger.Component
@@ -17,5 +18,6 @@ interface ServiceComponent {
     fun inject(callsService: CallsService)
     fun inject(smsService: SmsService)
     fun inject(monitorService: MonitorService)
+    fun inject(connectService: ConnectService)
 
 }

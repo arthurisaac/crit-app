@@ -34,10 +34,6 @@ class CallsReceiver : BroadcastReceiver() {
     @Inject
     lateinit var firebase: InterfaceFirebase
 
-    private fun getReference(child: String): DatabaseReference = firebase.getDatabaseReference(child)
-
-    private fun getStorageReference(child: String): StorageReference = firebase.getStorageReference(child)
-
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_NEW_OUTGOING_CALL || intent.action == TelephonyManager.ACTION_PHONE_STATE_CHANGED) {
             phoneNumber = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER)
