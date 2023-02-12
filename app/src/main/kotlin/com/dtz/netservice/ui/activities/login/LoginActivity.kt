@@ -19,6 +19,7 @@ import com.dtz.netservice.utils.ConstFun.startMain
 import com.dtz.netservice.utils.Consts.TEXT
 import com.dtz.netservice.utils.Consts.TYPE_CHILD
 import com.dtz.netservice.utils.Consts.TYPE_PARENT
+import com.dtz.netservice.utils.DefaultExceptionHandler
 import com.dtz.netservice.utils.KeyboardUtils
 import com.dtz.netservice.utils.Utils
 import com.jaredrummler.materialspinner.MaterialSpinner
@@ -45,6 +46,7 @@ class LoginActivity : BaseActivity(R.layout.activity_login), InterfaceViewLogin,
     override fun onStart() {
         super.onStart()
         if (interactor.user() != null){
+            Thread.setDefaultUncaughtExceptionHandler(DefaultExceptionHandler(this))
             if (typeApp) startMain(MapsFragment.TAG)
             else startAnimateActivity<MainChildActivity>(R.anim.fade_in,R.anim.fade_out)
         }

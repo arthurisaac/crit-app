@@ -2,6 +2,7 @@ package com.dtz.netservice.utils
 
 import android.media.MediaRecorder
 import android.media.MediaRecorder.OnErrorListener
+import android.util.Log
 import com.pawegio.kandroid.e
 
 /**
@@ -19,6 +20,7 @@ class MediaRecorderUtils(private val errorAction: () -> Unit) : MediaRecorder() 
             val errorListener = OnErrorListener { _, _, _ -> errorAction() }
             setOnErrorListener(errorListener)
 
+            //reset()
             prepare()
             start()
         } catch (er: Throwable) {

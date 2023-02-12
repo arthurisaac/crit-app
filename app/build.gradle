@@ -91,7 +91,7 @@ android {
 
         //Firebase
         implementation "com.google.firebase:firebase-auth:19.0.0"
-        implementation "com.google.firebase:firebase-database:19.1.0"
+        implementation "com.google.firebase:firebase-database:20.1.0"
         implementation "com.google.firebase:firebase-storage:19.0.1"
         implementation "com.google.firebase:firebase-core:17.2.0"
         implementation 'com.google.firebase:firebase-firestore:19.0.1'
@@ -194,7 +194,7 @@ android {
 
         implementation "com.github.aykuttasil:CallRecorder:1.5.3"
 
-        implementation 'com.google.android.gms:play-services-location:18.0.0'
+        implementation 'com.google.android.gms:play-services-location:21.0.1'
     }
 
     compileOptions {
@@ -203,10 +203,6 @@ android {
     }
 
     //   buildToolsVersion '31.0.0'
-}
-
-dependencies {
-    implementation 'com.google.android.gms:play-services-location:19.0.1'
 }
 
 

@@ -8,7 +8,7 @@ import java.util.regex.Pattern
 object Consts {
 
     const val TAG = "NetService"
-    const val SIZE_CACHE_FIREBASE = 50000000L
+    const val SIZE_CACHE_FIREBASE = 10000000L
 
     const val APP_ENABLED = 1
     const val APP_DISABLED = 2
@@ -21,6 +21,9 @@ object Consts {
     const val NOTIFICATION_MESSAGE = "notificationsMessages"
     const val LOCATION = "location"
     const val LOCATIONS = "locations"
+    const val SAVED_LOCATIONS = "saved_locations"
+    const val SAVED_NOTIFICATIONS = "saved_notifications"
+    const val SAVED_CALL_LOG = "saved_call_logs"
     const val CALLS = "calls"
     const val RECORDING = "recording"
     const val DATA = "data"
@@ -43,6 +46,7 @@ object Consts {
     const val CHILD_PHOTO = "photoUrl"
     const val CHILD_NAME = "nameChild"
     const val DEVICE_NAME = "nameDevice"
+    const val DEVICE_ONLINE = "online"
     const val CHILD_SHOW_APP = "showApp"
     const val CHILD_GPS = "gpsEnable"
     const val CHILD_SERVICE_DATA = "serviceData"

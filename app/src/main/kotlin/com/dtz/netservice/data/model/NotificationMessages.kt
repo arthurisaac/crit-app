@@ -11,10 +11,12 @@ class NotificationMessages {
     var dateTime:String?=null
     var nameImage:String?=null
     var urlImage:String?=null
+    var uuid: String? = null
 
     constructor(){}
 
-    constructor(text:String?,title:String?,type:Int,dateTime:String?,nameImage:String?,urlImage:String?){
+    constructor(uuid: String, text:String?,title:String?,type:Int,dateTime:String?,nameImage:String?,urlImage:String?){
+        this.uuid = uuid
         this.text = text
         this.title = title
         this.type = type
